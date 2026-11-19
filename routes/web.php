@@ -10,7 +10,7 @@ use Inertia\Inertia;
 
 Route::get('/', fn () => redirect()->route(auth()->check() ? 'generations.create' : 'login'));
 
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware('auth')->group(function () {
     Route::get('/generations', [GenerationController::class, 'index'])->name('generations.index');
     Route::get('/generations/new', [GenerationController::class, 'create'])->name('generations.create');
     Route::post('/generations', [GenerationController::class, 'store'])->name('generations.store');
