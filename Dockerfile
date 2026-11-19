@@ -28,6 +28,5 @@ COPY --from=frontend /app/public/build /opt/public-build
 RUN composer dump-autoload --optimize \
     && chown -R www-data:www-data storage bootstrap/cache database \
     && chmod +x docker/entrypoint.sh
-USER www-data
 ENTRYPOINT ["docker/entrypoint.sh"]
 CMD ["php-fpm"]
