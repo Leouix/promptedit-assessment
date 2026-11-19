@@ -7,7 +7,7 @@ COPY package.json package-lock.json ./
 RUN npm ci
 COPY resources resources
 COPY public public
-COPY vite.config.js tsconfig.json ./
+COPY vite.config.js jsconfig.json ./
 RUN npm run build
 
 # --- PHP backend ---
