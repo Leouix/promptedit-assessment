@@ -11,7 +11,7 @@ COPY vite.config.js jsconfig.json ./
 RUN npm run build
 
 # --- PHP backend ---
-FROM php:8.3-fpm-alpine
+FROM php:8.4-fpm-alpine
 
 RUN apk add --no-cache libzip-dev icu-dev oniguruma-dev sqlite-dev \
     && docker-php-ext-install pdo_sqlite bcmath intl zip opcache
