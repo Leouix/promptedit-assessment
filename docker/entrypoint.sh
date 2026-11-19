@@ -12,4 +12,7 @@ if [ "$RUN_MIGRATIONS" = "1" ]; then
     php artisan migrate --force
 fi
 
+# php-fpm workers run as www-data; the SQLite file and WAL need to be writable.
+chown -R www-data:www-data /var/www/html/database
+
 exec "$@"
