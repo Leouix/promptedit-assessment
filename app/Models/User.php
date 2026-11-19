@@ -50,7 +50,7 @@ class User extends Authenticatable
      */
     public function addCredits(string $amount, string $type, ?string $generationId = null): void
     {
-        $this->credits = bcadd($this->credits, $amount, 12);
+        $this->credits = bcadd($this->credits ?? '0', $amount, 12);
         $this->save();
 
         $this->creditTransactions()->create([

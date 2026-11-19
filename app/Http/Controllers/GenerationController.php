@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Generation;
 use App\Services\GenerationService;
+use App\Services\Money;
 use App\Services\PricingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -69,21 +70,37 @@ class GenerationController extends Controller
     {
         Gate::authorize('view-admin');
 
-        $rows = \DB::table('generations as g')
-            ->join('users as u', 'u.id', '=', 'g.user_id')
-            ->whereNotNull('g.charged_cost')
-            ->groupBy('completed_day', 'u.id', 'u.name')
-            ->orderByDesc('completed_day')
-            ->get([
-                // Pixelforge bills a generation on the UTC day it completed,
-                // so profit per day uses that day too and reconciles with
-                // GET /v1/usage.
-                \DB::raw("strftime('%Y-%m-%d', completed_at) as completed_day"),
-                'u.id as user_id', 'u.name as user_name',
-                \DB::raw("SUM(g.charged_cost) as credits_spent"),
-                \DB::raw("SUM(g.provider_cost) as provider_cost"),
-                \DB::raw("SUM(g.charged_cost - g.provider_cost) as profit"),
-            ]);
+        // Pixelforge bills a generation on the UTC day it completed, so
+        // profit per day uses that day too and reconciles with GET /v1/usage.
+        // We sum with bcmath (not SQL SUM): SQLite would return floats.
+        $generations = \App\Models\Generation::query()
+            ->whereNotNull('charged_cost')
+            ->with('user:id,name')
+            ->get();
+
+        $grouped = $generations->groupBy(function (\App\Models\Generation $g) {
+            return $g->completed_at->copy()->utc()->toDateString().'|'.$g->user_id.'|'.$g->user->name;
+        });
+
+        $rows = $grouped->map(function ($dayGroup, $key) {
+            [$day, $userId, $userName] = explode('|', $key);
+
+            $creditsSpent = '0';
+            $providerCost = '0';
+            foreach ($dayGroup as $g) {
+                $creditsSpent = Money::add($creditsSpent, $g->charged_cost);
+                $providerCost = Money::add($providerCost, $g->provider_cost);
+            }
+
+            return [
+                'completed_day' => $day,
+                'user_id' => (int) $userId,
+                'user_name' => $userName,
+                'credits_spent' => $creditsSpent,
+                'provider_cost' => $providerCost,
+                'profit' => Money::sub($creditsSpent, $providerCost),
+            ];
+        })->sortByDesc('completed_day')->values();
 
         return Inertia::render('Generations/Admin', [
             'rows' => $rows,
